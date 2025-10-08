@@ -38,8 +38,6 @@ jobs:
           gcloud storage rm gs://sayjong/frontend/**
         continue-on-error: true
 
-      - name: Upload to Google Cloud Storage
-        uses: 'google-github-actions/upload-cloud-storage@v2'
-        with:
-          path: 'dist'
-          destination: 'sayjong/frontend'
+      - name: Sync built files to Google Cloud Storage
+        run: |-
+          gsutil -m rsync -r -d dist/ gs://YOUR_BUCKET_NAME/frontend
