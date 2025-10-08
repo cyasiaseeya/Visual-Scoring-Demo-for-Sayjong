@@ -40,4 +40,4 @@ jobs:
 
       - name: Sync built files to Google Cloud Storage
         run: |-
-          gsutil -m rsync -r -d dist/ gs://YOUR_BUCKET_NAME/frontend
+          gsutil -m rsync -r -d dist/ gs://sayjong/frontend
