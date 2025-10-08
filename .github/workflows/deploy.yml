@@ -32,11 +32,9 @@ jobs:
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
-      - name: Delete old files in GCS
-        run: |-
-          gcloud storage rm gs://sayjong/frontend/**
-        continue-on-error: true
+    
+      - name: Set up Gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Sync built files to Google Cloud Storage
         run: |-
