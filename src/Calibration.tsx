@@ -1,4 +1,4 @@
-import React, { type FunctionComponent } from 'react';
+import { type FunctionComponent } from 'react';
 import styles from './Calibration.module.css';
 import CameraComponent from './Components/CameraComponent';
 import Header from './Components/Header';
