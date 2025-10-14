@@ -15,7 +15,7 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
       try {
         if (!videoRef.current || !canvasRef.current) return;
 
-        // 최신 MediaPipe Tasks Vision API 사용
+        // 최신 MediaPipe API 사용
         const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3" as any);
         const { FaceLandmarker, FilesetResolver } = vision;
 
@@ -157,3 +157,4 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
 };
 
 export default CameraComponent;
+
