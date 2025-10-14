@@ -79,8 +79,11 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 120px;
+    gap: 20px;
     min-width: 480px;
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 .wordParent {
     align-self: stretch;
@@ -148,4 +151,44 @@
     z-index: 1;
 }
 /* Footer 스타일은 Components/Footer.tsx에서 처리 */
+
+/* Landmarks display styles */
+.landmarksContainer {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.landmarksTitle {
+    font-size: 20px;
+    font-weight: 600;
+    color: #f04299;
+    margin: 0;
+    text-align: center;
+}
+
+.landmarksDisplay {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+}
+
+.landmarkPoint {
+    color: #f04299;
+    font-weight: bold;
+}
+
+.blendshapeValue {
+    color: #28a745;
+    font-weight: bold;
+}
 

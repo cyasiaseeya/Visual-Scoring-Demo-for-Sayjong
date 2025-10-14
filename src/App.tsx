@@ -1,35 +1,55 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import Calibration from './Calibration';
+import CalibrationCapture from './Components/CalibrationCapture';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [mode, setMode] = useState<'practice' | 'calibrate'>('practice');
+
+  const modeButtons = (
+    <div style={{
+      display: 'flex',
+      gap: '8px',
+      justifyContent: 'center',
+      marginTop: '10px',
+    }}>
+      <button
+        onClick={() => setMode('practice')}
+        style={{
+          padding: '6px 12px',
+          fontSize: '14px',
+          backgroundColor: mode === 'practice' ? '#f04299' : '#fff',
+          color: mode === 'practice' ? '#fff' : '#f04299',
+          border: '2px solid #f04299',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: '600',
+        }}
+      >
+        Practice Mode
+      </button>
+      <button
+        onClick={() => setMode('calibrate')}
+        style={{
+          padding: '6px 12px',
+          fontSize: '14px',
+          backgroundColor: mode === 'calibrate' ? '#f04299' : '#fff',
+          color: mode === 'calibrate' ? '#fff' : '#f04299',
+          border: '2px solid #f04299',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: '600',
+        }}
+      >
+        Calibration Tool
+      </button>
+    </div>
+  );
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div>
+      {mode === 'practice' ? <Calibration modeButtons={modeButtons} /> : <CalibrationCapture />}
+    </div>
+  );
 }
 
-export default App
+export default App;
