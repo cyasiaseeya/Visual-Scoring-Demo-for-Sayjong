@@ -37,6 +37,11 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
             if (canvasCtx) {
               canvasCtx.save();
               canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+              
+              // Apply horizontal flip
+              canvasCtx.translate(canvasRef.current.width, 0);
+              canvasCtx.scale(-1, 1);
+              
               canvasCtx.drawImage(
                 results.image, 0, 0, canvasRef.current.width, canvasRef.current.height
               );
@@ -82,7 +87,8 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
           left: 0,
           width: '100%',
           height: '100%',
-          objectFit: 'cover'
+          objectFit: 'cover',
+          display: 'none'
         }}
         playsInline
         muted
