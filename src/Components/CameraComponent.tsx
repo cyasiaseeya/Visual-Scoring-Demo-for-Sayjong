@@ -1,7 +1,4 @@
 import { useRef, useEffect, useState } from 'react';
-import { FaceMesh } from '@mediapipe/face_mesh';
-import { Camera } from '@mediapipe/camera_utils';
-// import { drawConnectors } from '@mediapipe/drawing_utils';
 
 interface CameraComponentProps {
   onResults?: (results: any) => void;
@@ -18,42 +15,71 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
       try {
         if (!videoRef.current || !canvasRef.current) return;
 
-        const faceMesh = new FaceMesh({
-          locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-          }
+        // 최신 MediaPipe Tasks Vision API 사용
+        const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3" as any);
+        const { FaceLandmarker, FilesetResolver } = vision;
+
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
+
+        const faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+            delegate: "GPU"
+          },
+          outputFaceBlendShapes: true,
+          runningMode: "VIDEO",
+          numFaces: 1
         });
 
-        faceMesh.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
-        });
-
-        faceMesh.onResults((results) => {
-          if (canvasRef.current && videoRef.current) {
-            const canvasCtx = canvasRef.current.getContext('2d');
-            if (canvasCtx) {
-              canvasCtx.save();
-              canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-              canvasCtx.drawImage(
-                results.image, 0, 0, canvasRef.current.width, canvasRef.current.height
-              );
-              
-              // 얼굴 랜드마크는 그리지 않음
-              canvasCtx.restore();
-            }
+        class Camera {
+          video: HTMLVideoElement;
+          options: any;
+          
+          constructor(video: HTMLVideoElement, options: any) {
+            this.video = video;
+            this.options = options;
           }
           
-          if (onResults) {
-            onResults(results);
+          async start() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            this.video.srcObject = stream;
+            this.video.play();
+            
+            const onFrame = () => {
+              if (this.options.onFrame) {
+                this.options.onFrame();
+              }
+              requestAnimationFrame(onFrame);
+            };
+            onFrame();
           }
-        });
+        }
 
         const camera = new Camera(videoRef.current, {
           onFrame: async () => {
-            await faceMesh.send({ image: videoRef.current! });
+            if (videoRef.current && canvasRef.current) {
+              const results = faceLandmarker.detectForVideo(videoRef.current, performance.now());
+              
+              if (canvasRef.current) {
+                const canvasCtx = canvasRef.current.getContext('2d');
+                if (canvasCtx) {
+                  canvasCtx.save();
+                  canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                  canvasCtx.drawImage(
+                    videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height
+                  );
+                  
+                  // 얼굴 랜드마크는 그리지 않음
+                  canvasCtx.restore();
+                }
+              }
+              
+              if (onResults) {
+                onResults(results);
+              }
+            }
           },
           width: 563,
           height: 357
@@ -82,7 +108,8 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
           left: 0,
           width: '100%',
           height: '100%',
-          objectFit: 'cover'
+          objectFit: 'cover',
+          transform: 'scaleX(-1)'
         }}
         playsInline
         muted
