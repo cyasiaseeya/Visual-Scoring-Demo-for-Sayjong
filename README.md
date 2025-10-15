@@ -6,24 +6,56 @@ A real-time facial landmark tracking system for Korean vowel pronunciation train
 
 ### 1. Face Anchoring System
 
-The system uses a rigid head anchor to track your head movements and keep the vowel overlay perfectly positioned on your mouth.
+The system uses a rigid head anchor with directional vectors to track your head movements and keep the vowel overlay perfectly positioned on your mouth.
 
 #### Anchor Points
-- **Nose tip** (landmark #1): Primary reference point
-- **Left eye inner corner** (landmark #133): Horizontal reference
-- **Right eye inner corner** (landmark #362): Horizontal reference
+- **Nose tip** (landmark #1): Origin of coordinate system
+- **Left eye inner corner** (landmark #133): Defines horizontal axis
+- **Right eye inner corner** (landmark #362): Defines horizontal axis
 
-#### How Anchoring Works
+#### 3D Coordinate System Construction
+The system builds an orthonormal basis (3D coordinate frame) using three directional vectors:
+
 ```
-1. Creates a 3D coordinate system from your face
-   - Origin: Nose tip
-   - Right vector: Direction from nose to right eye
-   - Up vector: Perpendicular to right vector
-   - Forward vector: Cross product of right × up
+1. Right Vector (X-axis)
+   - Direction: Left eye inner → Right eye inner
+   - Normalized: Yes (unit length)
+   - Purpose: Defines horizontal direction across face
 
-2. Transforms the calibrated overlay to match your head orientation
-   - Handles head tilt, rotation, and scale automatically
-   - Overlay stays perfectly aligned even when you move
+2. Down Vector (Temporary)
+   - Direction: Eye center → Nose tip
+   - Normalized: Yes (unit length)
+   - Purpose: Defines face plane orientation
+
+3. Forward Vector (Z-axis)
+   - Computed: Right × Down (cross product)
+   - Direction: Points out from face (perpendicular to face plane)
+   - Purpose: Defines depth direction
+
+4. Up Vector (Y-axis)
+   - Computed: Forward × Right (cross product)
+   - Direction: Points up along face
+   - Purpose: Completes orthonormal basis
+```
+
+#### How the Anchor Works
+```
+1. Compute coordinate system for calibrated data (from vowel_calibration.json)
+   - Origin: Calibrated nose position
+   - Basis: Right, Up, Forward vectors from calibration
+
+2. Compute coordinate system for live data (from camera)
+   - Origin: Current nose position
+   - Basis: Right, Up, Forward vectors from current frame
+
+3. Transform overlay points:
+   a. Express calibrated point relative to calibrated origin
+   b. Convert to local coordinates using calibrated basis
+   c. Scale by face size ratio (inter-eye distance)
+   d. Convert back to world coordinates using live basis
+   e. Add to live origin
+
+4. Result: Overlay follows head rotation, tilt, and scale automatically
 ```
 
 ### 2. Scaling Factor
@@ -96,9 +128,10 @@ staticTargetShape[id] = [
 ## Visual Features
 
 ### Live Tracking
-- **Green dots**: Real-time mouth landmarks
-- **Pink overlay**: Target vowel shape
-- **Red dot**: Anchor point (nose tip)
+- **Blue dots**: Face anchor points (nose and eyes)
+- **Orange dots**: Real-time mouth landmarks (40 points)
+- **Pink overlay**: Live mouth contour
+- **Green overlay**: Target vowel shape
 
 ### Overlay Rendering
 - **Static shape**: Target vowel doesn't change shape
@@ -183,24 +216,56 @@ MediaPipe와 컴퓨터 비전을 사용한 한국어 모음 발음 훈련을 위
 
 ### 1. 얼굴 앵커링 시스템
 
-시스템은 강체 머리 앵커를 사용하여 머리 움직임을 추적하고 모음 오버레이를 입에 완벽하게 위치시킵니다.
+시스템은 방향 벡터를 사용한 강체 머리 앵커로 머리 움직임을 추적하고 모음 오버레이를 입에 완벽하게 위치시킵니다.
 
 #### 앵커 포인트
-- **코 끝** (랜드마크 #1): 주 참조점
-- **왼쪽 눈 안쪽 모서리** (랜드마크 #133): 수평 참조
-- **오른쪽 눈 안쪽 모서리** (랜드마크 #362): 수평 참조
+- **코 끝** (랜드마크 #1): 좌표계의 원점
+- **왼쪽 눈 안쪽 모서리** (랜드마크 #133): 수평 축 정의
+- **오른쪽 눈 안쪽 모서리** (랜드마크 #362): 수평 축 정의
 
-#### 앵커링 작동 방식
+#### 3D 좌표계 구성
+시스템은 세 개의 방향 벡터를 사용하여 정규직교 기저(3D 좌표 프레임)를 구축합니다:
+
 ```
-1. 얼굴로부터 3D 좌표계 생성
-   - 원점: 코 끝
-   - 오른쪽 벡터: 코에서 오른쪽 눈으로의 방향
-   - 위쪽 벡터: 오른쪽 벡터에 수직
-   - 앞쪽 벡터: 오른쪽 × 위쪽 벡터의 외적
+1. 오른쪽 벡터 (X축)
+   - 방향: 왼쪽 눈 안쪽 → 오른쪽 눈 안쪽
+   - 정규화: 예 (단위 길이)
+   - 목적: 얼굴의 수평 방향 정의
 
-2. 교정된 오버레이를 현재 머리 방향에 맞게 변환
-   - 머리 기울기, 회전, 스케일을 자동으로 처리
-   - 움직여도 오버레이가 완벽하게 정렬됨
+2. 아래쪽 벡터 (임시)
+   - 방향: 눈 중심 → 코 끝
+   - 정규화: 예 (단위 길이)
+   - 목적: 얼굴 평면 방향 정의
+
+3. 앞쪽 벡터 (Z축)
+   - 계산: 오른쪽 × 아래쪽 (외적)
+   - 방향: 얼굴에서 바깥쪽으로 (얼굴 평면에 수직)
+   - 목적: 깊이 방향 정의
+
+4. 위쪽 벡터 (Y축)
+   - 계산: 앞쪽 × 오른쪽 (외적)
+   - 방향: 얼굴을 따라 위쪽
+   - 목적: 정규직교 기저 완성
+```
+
+#### 앵커 작동 방식
+```
+1. 교정 데이터의 좌표계 계산 (vowel_calibration.json에서)
+   - 원점: 교정된 코 위치
+   - 기저: 교정의 오른쪽, 위쪽, 앞쪽 벡터
+
+2. 실시간 데이터의 좌표계 계산 (카메라에서)
+   - 원점: 현재 코 위치
+   - 기저: 현재 프레임의 오른쪽, 위쪽, 앞쪽 벡터
+
+3. 오버레이 포인트 변환:
+   a. 교정된 원점에 대해 교정된 포인트 표현
+   b. 교정된 기저를 사용하여 로컬 좌표로 변환
+   c. 얼굴 크기 비율로 스케일 (눈 사이 거리)
+   d. 실시간 기저를 사용하여 월드 좌표로 다시 변환
+   e. 실시간 원점에 추가
+
+4. 결과: 오버레이가 머리 회전, 기울기, 스케일을 자동으로 따름
 ```
 
 ### 2. 스케일링 팩터
@@ -273,9 +338,10 @@ staticTargetShape[id] = [
 ## 시각적 기능
 
 ### 실시간 추적
-- **초록 점**: 실시간 입 랜드마크
-- **분홍 오버레이**: 목표 모음 모양
-- **빨간 점**: 앵커 포인트 (코 끝)
+- **파란 점**: 얼굴 앵커 포인트 (코와 눈)
+- **주황 점**: 실시간 입 랜드마크 (40개 점)
+- **분홍 오버레이**: 실시간 입 윤곽
+- **초록 오버레이**: 목표 모음 모양
 
 ### 오버레이 렌더링
 - **정적 모양**: 목표 모음이 모양을 바꾸지 않음
