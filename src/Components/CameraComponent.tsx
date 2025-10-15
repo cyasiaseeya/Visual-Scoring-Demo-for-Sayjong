@@ -4,16 +4,19 @@
  * Features:
  * - 43 landmark tracking (3 face anchors + 40 mouth points)
  * - 3D head pose tracking with full rotation support (pitch, yaw, roll)
- * - Directional vector-based anchor system (follows head tilt perfectly)
+ * - Nose-tip anchor system with eye-based coordinate frame
  * - Real-time blendshape analysis for pronunciation training
  * - Target vowel overlay with calibration-based positioning (static shape)
  * - Smooth motion tracking with EMA filtering
  * - Full 40-point mouth detail (20 outer lip + 20 inner lip)
  * 
- * Head Pose System:
- * - Computes 3D coordinate system from nose + eyes (origin, right, up, forward)
- * - Transforms calibrated overlay to match user's head orientation
- * - Handles head tilt, rotation, and scale automatically
+ * Anchor System:
+ * - Origin: Nose tip (landmark #1) - stable reference point
+ * - Right vector: Normalized direction from left eye inner to right eye inner
+ * - Up vector: Perpendicular to face plane (forward × right)
+ * - Forward vector: Cross product of right vector and eye-to-nose vector
+ * - Scale: Inter-eye distance for proportional sizing
+ * - Transforms calibrated overlay to match user's head orientation automatically
  */
 
 import { useRef, useEffect, useState } from 'react';
@@ -94,21 +97,16 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
   }
 
   const computeHeadPoseAnchor = (landmarks: LandmarkPoint[] | Record<string, number[]>): HeadPoseAnchor => {
-    let nose, leftEye, rightEye, mouthCenter;
+    let nose, leftEye, rightEye;
     
     if (Array.isArray(landmarks)) {
-      nose = landmarks[1];
+      nose = landmarks[1];  // Nose tip - used as anchor origin
       leftEye = landmarks[133];
       rightEye = landmarks[362];
-      // Use nose (landmark 1) as the anchor point for stability
-      mouthCenter = landmarks[1];
     } else {
       nose = { x: landmarks[1][0], y: landmarks[1][1], z: landmarks[1][2] };
       leftEye = { x: landmarks[133][0], y: landmarks[133][1], z: landmarks[133][2] };
       rightEye = { x: landmarks[362][0], y: landmarks[362][1], z: landmarks[362][2] };
-      
-      // Use nose (landmark 1) as the anchor point for stability
-      mouthCenter = { x: landmarks[1][0], y: landmarks[1][1], z: landmarks[1][2] };
     }
 
     // Compute right vector (left eye → right eye)
@@ -131,18 +129,24 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
       z: (leftEye.z + rightEye.z) / 2
     };
 
-    // Compute up vector (eye center → nose, then perpendicular)
+    // Compute temporary down vector (eye center → nose, normalized)
     const eyeToNose = {
       x: nose.x - eyeCenter.x,
       y: nose.y - eyeCenter.y,
       z: nose.z - eyeCenter.z
     };
+    const eyeToNoseLength = Math.sqrt(eyeToNose.x * eyeToNose.x + eyeToNose.y * eyeToNose.y + eyeToNose.z * eyeToNose.z);
+    const downVector = {
+      x: eyeToNose.x / eyeToNoseLength,
+      y: eyeToNose.y / eyeToNoseLength,
+      z: eyeToNose.z / eyeToNoseLength
+    };
 
-    // Forward vector = right × eyeToNose (cross product)
+    // Forward vector = right × down (cross product, points out from face)
     const forwardVec = {
-      x: rightVector.y * eyeToNose.z - rightVector.z * eyeToNose.y,
-      y: rightVector.z * eyeToNose.x - rightVector.x * eyeToNose.z,
-      z: rightVector.x * eyeToNose.y - rightVector.y * eyeToNose.x
+      x: rightVector.y * downVector.z - rightVector.z * downVector.y,
+      y: rightVector.z * downVector.x - rightVector.x * downVector.z,
+      z: rightVector.x * downVector.y - rightVector.y * downVector.x
     };
     const forwardLength = Math.sqrt(forwardVec.x * forwardVec.x + forwardVec.y * forwardVec.y + forwardVec.z * forwardVec.z);
     const forwardVector = {
@@ -151,7 +155,7 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
       z: forwardVec.z / forwardLength
     };
 
-    // Up vector = forward × right (cross product)
+    // Up vector = forward × right (cross product, orthogonal to face plane)
     const upVec = {
       x: forwardVector.y * rightVector.z - forwardVector.z * rightVector.y,
       y: forwardVector.z * rightVector.x - forwardVector.x * rightVector.z,
@@ -165,7 +169,7 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
     };
 
     return {
-      origin: { x: mouthCenter.x, y: mouthCenter.y, z: mouthCenter.z }, // Use mouth center as origin
+      origin: { x: nose.x, y: nose.y, z: nose.z }, // Nose tip as origin
       rightVector,
       upVector,
       forwardVector,
@@ -275,9 +279,9 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onResults }) => {
            scaledLocalZ * userPose.forwardVector.z
       };
       
-      // 5. Add to user's nose position with X offset correction
+      // 5. Add to user's anchor position (nose tip)
       targetLandmarks[id] = {
-        x: userPose.origin.x + worldOffset.x - 0.02, // X offset correction
+        x: userPose.origin.x + worldOffset.x,
         y: userPose.origin.y + worldOffset.y,
         z: userPose.origin.z + worldOffset.z
       };
